@@ -1,6 +1,7 @@
 # source: https://github.com/ericmetodiev/OmniFold.git
 import numpy as np
 import modplot 
+import ibu
 
 # a dictionary to hold information about the observables
 obs = {}
@@ -77,7 +78,7 @@ ibu_style = {'ls': '-', 'marker': 'o', 'ms': 2.5, 'color': 'gray', 'zorder': 1}
 omnifold_style = {'ls': '-', 'marker': 's', 'ms': 2.5, 'color': 'tab:red', 'zorder': 3}
 
 
-def calc_obs(obs_dict, data_synth, data_real):
+def calc_obs(obs_dict, data_synth, data_real, itnum=3):
     # calculate quantities to be stored in obs
     for obkey,ob in obs_dict.items():
         
@@ -102,4 +103,11 @@ def calc_obs(obs_dict, data_synth, data_real):
         # compute (and normalize) the response matrix between GEN and SIM
         ob['response'] = np.histogram2d(ob['simobs'], ob['genobs'], bins=(ob['bins_det'], ob['bins_mc']))[0]
         ob['response'] /= (ob['response'].sum(axis=0) + 10**-50)
+
+        # perform iterative Bayesian unfolding
+        ob['ibu_phis'] = ibu.ibu(ob['data_hist'], ob['response'], ob['genobs_hist'], 
+                            ob['binwidth_det'], ob['binwidth_mc'], it=itnum)
+        ob['ibu_phi_unc'] = ibu.ibu_unc(ob, it=itnum, nresamples=25)
+
+        print('Done with', obkey)
         
