@@ -1,3 +1,6 @@
+import numpy as np
+import modplot 
+
 # a dictionary to hold information about the observables
 obs = {}
 
@@ -71,3 +74,31 @@ truth_style = {'step': 'mid', 'edgecolor': 'green', 'facecolor': (0.75, 0.875, 0
                'lw': 1.25, 'zorder': 0, 'label': '``Truth\"'}
 ibu_style = {'ls': '-', 'marker': 'o', 'ms': 2.5, 'color': 'gray', 'zorder': 1}
 omnifold_style = {'ls': '-', 'marker': 's', 'ms': 2.5, 'color': 'tab:red', 'zorder': 3}
+
+
+def calc_obs(obs_dict, data_synth, data_real):
+    # calculate quantities to be stored in obs
+    for obkey,ob in obs_dict.items():
+        
+        # calculate observable for GEN, SIM, DATA, and TRUE
+        ob['genobs'], ob['simobs'] = ob['func'](data_synth, 'gen'), ob['func'](data_synth, 'sim')
+        ob['truthobs'], ob['dataobs'] = ob['func'](data_real, 'gen'), ob['func'](data_real, 'sim')
+        
+        # setup bins
+        ob['bins_det'] = np.linspace(ob['xlim'][0], ob['xlim'][1], ob['nbins_det']+1)
+        ob['bins_mc'] = np.linspace(ob['xlim'][0], ob['xlim'][1], ob['nbins_mc']+1)
+        ob['midbins_det'] = (ob['bins_det'][:-1] + ob['bins_det'][1:])/2
+        ob['midbins_mc'] = (ob['bins_mc'][:-1] + ob['bins_mc'][1:])/2
+        ob['binwidth_det'] = ob['bins_det'][1] - ob['bins_det'][0]
+        ob['binwidth_mc'] = ob['bins_mc'][1] - ob['bins_mc'][0]
+        
+        # get the histograms of GEN, DATA, and TRUTH level observables
+        ob['genobs_hist'] = np.histogram(ob['genobs'], bins=ob['bins_mc'], density=True)[0]
+        ob['data_hist'] = np.histogram(ob['dataobs'], bins=ob['bins_det'], density=True)[0]
+        ob['truth_hist'], ob['truth_hist_unc'] = modplot.calc_hist(ob['truthobs'], bins=ob['bins_mc'], 
+                                                                density=True)[:2]
+
+        # compute (and normalize) the response matrix between GEN and SIM
+        ob['response'] = np.histogram2d(ob['simobs'], ob['genobs'], bins=(ob['bins_det'], ob['bins_mc']))[0]
+        ob['response'] /= (ob['response'].sum(axis=0) + 10**-50)
+        
