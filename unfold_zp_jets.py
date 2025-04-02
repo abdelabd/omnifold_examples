@@ -18,9 +18,14 @@ def main():
     N_ITER_IBU = 3
 
     # OmniFold hyperparameters
-    N_ITER_OF = 10
+    N_ITER_OF = 5
+    LR_OF = 5e-5
+    LR_PATIENCE_OF = 10
     BATCH_SIZE_OF = 1000
-    EPOCHS_OF = 2
+    EPOCHS_OF = 100
+    NUM_HEAD_OF = 8
+    NUM_TRANSFORMER_OF = 4
+    PROJECTION_DIM_OF = 97
 
     # Multifold hyperparameters
     LAYER_SIZES = [64, 128, 64]
@@ -123,7 +128,9 @@ def main():
     model_mf_reco = omnifold.net.MLP(nvars = len(OBS_MULTIFOLD), layer_sizes=LAYER_SIZES)
     model_mf_gen = omnifold.net.MLP(nvars = len(OBS_MULTIFOLD), layer_sizes=LAYER_SIZES)
     model_mf = omnifold.MultiFold(
-        name="MutiFold", 
+        weights_folder = "model_weights",
+        log_folder = "training_logs",
+        name=f"MutiFold_niter{N_ITER_MF}_bs{BATCH_SIZE_MF}_ep{EPOCHS_MF}_layers{LAYER_SIZES[0]}_{LAYER_SIZES[1]}_{LAYER_SIZES[2]}", 
         model_reco=model_mf_reco, 
         model_gen=model_mf_gen, 
         data=obs_nature, 
@@ -144,18 +151,32 @@ def main():
     N_FEAT_GEN = particle_mc.gen.shape[2]
     N_PART_GEN = particle_mc.gen.shape[1]
 
-    model_of_reco = omnifold.net.PET(num_feat = N_FEAT_RECO, num_evt = 0, num_part = N_PART_RECO)
-    model_of_gen = omnifold.net.PET(num_feat = N_FEAT_GEN, num_evt=0, num_part=N_PART_GEN)
+    model_of_reco = omnifold.net.PET(num_feat = N_FEAT_RECO, 
+                                     num_evt = 0, 
+                                     num_part = N_PART_RECO, 
+                                     num_heads=NUM_HEAD_OF, 
+                                     num_transformer=NUM_TRANSFORMER_OF,
+                                     projection_dim=PROJECTION_DIM_OF)
+    model_of_gen = omnifold.net.PET(num_feat = N_FEAT_GEN, 
+                                    num_evt=0, 
+                                    num_part=N_PART_GEN, 
+                                    num_heads=NUM_HEAD_OF, 
+                                    num_transformer=NUM_TRANSFORMER_OF,
+                                    projection_dim=PROJECTION_DIM_OF)
     model_of = omnifold.MultiFold(
-        name="OmniFold", 
+        weights_folder = "model_weights",
+        log_folder = "training_logs",
+        name=f"OmniFold_niter{N_ITER_OF}_lr{LR_OF}_lrp{LR_PATIENCE_OF}_bs{BATCH_SIZE_OF}_ep{EPOCHS_OF}_nhead{NUM_HEAD_OF}_ntl{NUM_TRANSFORMER_OF}_pdim{PROJECTION_DIM_OF}", 
         model_reco=model_of_reco, 
         model_gen=model_of_gen, 
         data=particle_nature, 
         mc=particle_mc, 
         niter=N_ITER_OF,
+        lr = LR_OF,
         batch_size=BATCH_SIZE_OF,
         epochs=EPOCHS_OF,
-        size=N_JOBS)
+        size=N_JOBS,
+        lr_patience=LR_PATIENCE_OF)
 
     model_of.Unfold()
     model_of_final_weights = model_of.reweight(events=model_of.mc.gen, model=model_of.model2)
@@ -228,47 +249,18 @@ def main():
         # If running on binder, the plot can be accessed by first going to the jupyter file browser
         # (which itself can be accessed by copying the URL of this notebook and removing the name of the notebook
         # after the final "/"), selecting the square next to the name of the plot, and clicking "Download".
-        fig.savefig('OmniFold_{}.pdf'.format(obkey), bbox_inches='tight')
+        fig.savefig(f"figures/OmniFold_niter{N_ITER_OF}_lr{LR_OF}_lrp{LR_PATIENCE_OF}_bs{BATCH_SIZE_OF}_ep{EPOCHS_OF}_nhead{NUM_HEAD_OF}_ntl{NUM_TRANSFORMER_OF}_pdim{PROJECTION_DIM_OF}_{obkey}.pdf", bbox_inches='tight')
         plt.show()
 
     # Save the weights of the unfolded distributions
-    np.save(model_of.name 
-            + f"_N{N_DATA/(10**(l10data))}e{int(l10data)}" 
-            + f"_niter{N_ITER_OF}"
-            + f"_bs{BATCH_SIZE_OF}"
-            + f"_ep{EPOCHS_OF}"
-            + '_final_weights.npy', model_of_final_weights)
-    np.save(model_of.name 
-            + f"_N{N_DATA/(10**(l10data))}e{int(l10data)}" 
-            + f"_niter{N_ITER_OF}"
-            + f"_bs{BATCH_SIZE_OF}"
-            + f"_ep{EPOCHS_OF}"
-            + '_weights_push.npy', model_of.weights_push)
-    np.save(model_of.name 
-            + f"_N{N_DATA/(10**(l10data))}e{int(l10data)}" 
-            + f"_niter{N_ITER_OF}"
-            + f"_bs{BATCH_SIZE_OF}"
-            + f"_ep{EPOCHS_OF}"
-            + '_weights_pull.npy', model_of.weights_pull)
+    np.save("hist_weights/"+model_of.name + '_final_weights.npy', model_of_final_weights)
+    np.save("hist_weights/"+model_of.name + '_weights_push.npy', model_of.weights_push)
+    np.save("hist_weights/"+model_of.name + '_weights_pull.npy', model_of.weights_pull)
     
-    np.save(model_mf.name 
-            + f"_N{N_DATA/(10**(l10data))}e{int(l10data)}" 
-            + f"_niter{N_ITER_OF}"
-            + f"_bs{BATCH_SIZE_OF}"
-            + f"_ep{EPOCHS_OF}"
-            + '_final_weights.npy', model_mf_final_weights)
-    np.save(model_mf.name 
-            + f"_N{N_DATA/(10**l10data)}e{int(l10data)}" 
-            + f"_niter{N_ITER_MF}"
-            + f"_bs{BATCH_SIZE_MF}"
-            + f"_ep{EPOCHS_MF}"
-            + '_weights_push.npy', model_mf.weights_push)
-    np.save(model_mf.name 
-            + f"_N{N_DATA/(10**l10data)}e{int(l10data)}" 
-            + f"_niter{N_ITER_MF}"
-            + f"_bs{BATCH_SIZE_MF}"
-            + f"_ep{EPOCHS_MF}"
-            + '_weights_pull.npy', model_mf.weights_pull)
+    np.save("hist_weights/"+model_mf.name + '_final_weights.npy', model_mf_final_weights)
+    np.save("hist_weights/"+model_mf.name + '_weights_push.npy', model_mf.weights_push)
+    np.save("hist_weights/"+model_mf.name + '_weights_pull.npy', model_mf.weights_pull)
+
 
 if __name__ == '__main__':
     main()
