@@ -23,9 +23,9 @@ def main():
     LR_PATIENCE_OF = 10
     BATCH_SIZE_OF = 1000
     EPOCHS_OF = 100
-    NUM_HEAD_OF = 8
-    NUM_TRANSFORMER_OF = 4
-    PROJECTION_DIM_OF = 97
+    NUM_HEAD_OF = 12
+    NUM_TRANSFORMER_OF = 5
+    PROJECTION_DIM_OF = 128
 
     # Multifold hyperparameters
     LAYER_SIZES = [64, 128, 64]
@@ -130,7 +130,7 @@ def main():
     model_mf = omnifold.MultiFold(
         weights_folder = "model_weights",
         log_folder = "training_logs",
-        name=f"MutiFold_niter{N_ITER_MF}_bs{BATCH_SIZE_MF}_ep{EPOCHS_MF}_layers{LAYER_SIZES[0]}_{LAYER_SIZES[1]}_{LAYER_SIZES[2]}", 
+        name=f"MultiFold_niter{N_ITER_MF}_bs{BATCH_SIZE_MF}_ep{EPOCHS_MF}_layers{LAYER_SIZES[0]}_{LAYER_SIZES[1]}_{LAYER_SIZES[2]}", 
         model_reco=model_mf_reco, 
         model_gen=model_mf_gen, 
         data=obs_nature, 
@@ -142,6 +142,11 @@ def main():
 
     model_mf.Unfold()
     model_mf_final_weights = model_mf.reweight(events=model_mf.mc.gen, model=model_mf.model2)
+
+    # Save distribution weights
+    np.save("hist_weights/"+model_mf.name + '_final_weights.npy', model_mf_final_weights)
+    np.save("hist_weights/"+model_mf.name + '_weights_push.npy', model_mf.weights_push)
+    np.save("hist_weights/"+model_mf.name + '_weights_pull.npy', model_mf.weights_pull)
     print("Done")
 
     ############################### Omnifold ###############################
@@ -180,7 +185,13 @@ def main():
 
     model_of.Unfold()
     model_of_final_weights = model_of.reweight(events=model_of.mc.gen, model=model_of.model2)
+
+    # Save distribution weights
+    np.save("hist_weights/"+model_of.name + '_final_weights.npy', model_of_final_weights)
+    np.save("hist_weights/"+model_of.name + '_weights_push.npy', model_of.weights_push)
+    np.save("hist_weights/"+model_of.name + '_weights_pull.npy', model_of.weights_pull)
     print("Done")
+    
 
     ############################### Evaluate, save output ###############################
     for i,(obkey,ob) in enumerate(obs.items()):
@@ -252,14 +263,9 @@ def main():
         fig.savefig(f"figures/OmniFold_niter{N_ITER_OF}_lr{LR_OF}_lrp{LR_PATIENCE_OF}_bs{BATCH_SIZE_OF}_ep{EPOCHS_OF}_nhead{NUM_HEAD_OF}_ntl{NUM_TRANSFORMER_OF}_pdim{PROJECTION_DIM_OF}_{obkey}.pdf", bbox_inches='tight')
         plt.show()
 
-    # Save the weights of the unfolded distributions
-    np.save("hist_weights/"+model_of.name + '_final_weights.npy', model_of_final_weights)
-    np.save("hist_weights/"+model_of.name + '_weights_push.npy', model_of.weights_push)
-    np.save("hist_weights/"+model_of.name + '_weights_pull.npy', model_of.weights_pull)
     
-    np.save("hist_weights/"+model_mf.name + '_final_weights.npy', model_mf_final_weights)
-    np.save("hist_weights/"+model_mf.name + '_weights_push.npy', model_mf.weights_push)
-    np.save("hist_weights/"+model_mf.name + '_weights_pull.npy', model_mf.weights_pull)
+    
+    
 
 
 if __name__ == '__main__':
